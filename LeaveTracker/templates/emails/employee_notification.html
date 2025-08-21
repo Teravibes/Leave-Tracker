@@ -1,0 +1,6 @@
+{% extends "emails/base.html" %}
+
+{% block content %}
+  <h2>Holiday Request {{ status }}</h2>
+  <p>Your holiday request has been {{ status|lower }}.</p>
+{% endblock %}

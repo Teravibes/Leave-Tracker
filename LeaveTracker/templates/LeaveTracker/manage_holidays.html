@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    {% load static %}
+    <!-- JavaScript libraries -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.3/dist/umd/popper.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    <script type="text/javascript" charset="utf8" src="https://cdn.datatables.net/1.10.25/js/jquery.dataTables.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Approved Employee Holidays</title>
+    <!-- CSS libraries -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="icon" href="{% static 'favicon.ico' %}" type="image/x-icon">
+    <!-- DataTables CSS -->
+    <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.10.25/css/jquery.dataTables.css">
+
+    {% load math_filters %}
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="{% static 'LeaveTracker/styles.css' %}">
+</head>
+<body>
+    <!-- Navbar -->
+    {% include 'LeaveTracker/navbar.html' %}
+    <!-- Holidays container -->
+    <div class="manage-holidays-container col-md-12">
+        <!-- Dropdowns for filtering -->
+        <div class="container mt-4 p-4 rounded shadow-sm bg-white border">
+            <div class="row g-3 align-items-end">
+                <div class="col-md-4">
+                <label for="employeeSelect" class="form-label">Employee</label>
+                <select id="employeeSelect" class="form-select w-100">
+                    {% for employee in employees %}
+                        <option value="{{ employee.id }}">{{ employee.user.get_full_name }}</option>
+                    {% endfor %}
+                </select>
+                </div>
+                <div class="col-md-4">
+                <label for="yearSelect" class="form-label">Year</label>
+                <select id="yearSelect" class="form-select w-100">
+                    {% if years %}
+                        {% for year in years %}
+                            <option value="{{ year }}">{{ year }}</option>
+                        {% endfor %}
+                    {% else %}
+                        <option value="{{ now.year }}">{{ now.year }}</option>
+                    {% endif %}
+                </select>
+                </div>
+                <div class="col-md-4 d-flex justify-content-md-end mt-3 mt-md-0">
+                <button id="filterButton" class="btn btn-primary w-100">Filter</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="manage-holidays-container col-md-12">
+            <h2 class="my-3">Approved Employee Holidays</h2>
+            <div class="container mt-4">
+                <div class="row justify-content-start ms-1 mb-4"> 
+                    <div class="col-auto">
+                        <p class="form-label mb-0">Days Taken:
+                            <span id="totalNormalHolidays">0</span>
+                        </p>
+                    </div>
+                    <div class="col-auto">
+                        <p class="form-label mb-0">Remaining Days:
+                            <span id="totalNormalHolidaysleft">0</span>
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <table id="holidays-table" class="table table-striped table-bordered">
+                <thead>
+                    <tr>
+                        <th>Employee</th>
+                        <th>Start Date</th>
+                        <th>End Date</th>
+                        <th>Days Taken</th>
+                        <th>Holiday Type</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for holiday_request in page_obj %}
+                        <tr>
+                            <td>{{ holiday_request.employee.user.get_full_name }}</td>
+                            <td>{{ holiday_request.start_date }}</td>
+                            <td>{{ holiday_request.end_date }}</td>
+                            <td>{{ holiday_request.days_taken }}</td> <!-- Add this line -->
+                            <td>
+                                {% if holiday_request.is_special %}
+                                    Special Holiday - {{ holiday_request.special_type }}
+                                {% else %}
+                                    Regular Holiday
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if is_manager %}
+                                    <form method="post" action="{% url 'delete_holiday' holiday_request.id %}" onsubmit="return confirm('Are you sure you want to delete this holiday?');">
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn btn-danger">Delete</button>
+                                    </form>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Special Holiday Usage Container -->
+        <div class="manage-holidays-container col-md-12">
+            <h2 class="my-3">Special Holiday Usage</h2>
+            <!-- Special Holiday Usage Table -->
+            <table id="specialHolidayUsageTable" class="table table-striped table-bordered">
+                <thead>
+                    <tr>
+                        <th>Employee</th>
+                        <th>Year</th>
+                        <th>Holiday Type</th>
+                        <th>Days Used</th>
+                    </tr>
+                </thead>
+            </table>
+        </div>
+
+        {% if "LeaveTracker.view_all_employees" in user.get_all_permissions or "LeaveTracker.view_holiday" in user.get_all_permissions %}
+            <div class="col-auto">
+                <label for="exportYearSelect" class="form-label">Export all Employee Holidays for Year:</label>
+                <select class="form-select" id="exportYearSelect">
+                    {% if years %}
+                        {% for year in years %}
+                            <option value="{{ year }}">{{ year }}</option>
+                        {% endfor %}
+                    {% else %}
+                        <option value="{{ now.year }}">{{ now.year }}</option>
+                    {% endif %}
+                </select>
+                <button id="exportButton" class="exportbtn">Export</button>
+            </div>
+        {% endif %}
+
+        <!-- Custom Confirmation Modal -->
+        <div class="modal fade" tabindex="-1" id="confirmModal">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Confirm Delete</h5>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        <p>Are you sure you want to delete this holiday?</p>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">No</button>
+                        <button type="button" class="btn btn-danger" id="confirmDelete">Yes</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <script>
+            $(document).ready(function() {
+                // Initialize DataTable with no data
+                var table = $('#holidays-table').DataTable({
+                    data: [],
+                    columns: [
+                        { title: "Employee" },
+                        { title: "Start Date" },
+                        { title: "End Date" },
+                        { title: "Days Taken" },
+                        { title: "Holiday Type" },
+                        { title: "Actions" }
+                    ],
+                    paging: true
+                });
+
+                // New DataTable for SpecialHolidayUsage with no data
+                var specialHolidayUsageTable = $('#specialHolidayUsageTable').DataTable({
+                    'data': [],
+                    'columns': [
+                        { 'data': 'full_name', 'title': 'Employee' },
+                        { 'data': 'holiday_type__name', 'title': 'Holiday Type' },
+                        { 'data': 'total_days_used', 'title': 'Days Used' },
+                        { 'data': 'year', 'title': 'Year' },
+                    ]
+                });
+
+                $("#filterButton").click(function() {
+                    var selectedEmployeeId = $("#employeeSelect").val();
+                    var selectedYear = $("#yearSelect").val();
+                    var isManager = {{ is_manager|yesno:"true,false" }};
+                    var canDeleteHoliday = {{ can_delete_holiday|yesno:"true,false" }};
+
+                    $.ajax({
+                        url: '/filter-holidays/',
+                        data: {
+                            'employee_id': selectedEmployeeId,
+                            'year': selectedYear,
+                        },
+                        type: 'GET',
+                        dataType: 'json',
+                        success: function(data) {
+                            // Clear the DataTable
+                            table.clear();
+                            // Populate DataTable
+                            data.forEach(function(item) {
+                                if (isManager && canDeleteHoliday) {
+                                    item[5] = '<button type="button" class="btn btn-danger delete-btn" data-holiday-id="' + item[5] + '">Delete</button>';
+                                } else {
+                                    item[5] = '';
+                                }
+                                table.row.add(item);
+                            });
+                            table.draw();
+
+                            // Request for total normal holidays
+                            $.ajax({
+                                url: '/total-normal-holidays/' + selectedEmployeeId + '/' + selectedYear + '/',
+                                type: 'GET',
+                                dataType: 'json',
+                                success: function(response) {
+                                    // Update "Total Normal Holidays"
+                                    $("#totalNormalHolidays").text(response.total_days || 0);
+                                },
+                                error: function(jqXHR) {
+                                    // Only show an alert for errors other than 403
+                                    if(jqXHR.status != 403) {
+                                        alert("An error occurred while fetching the total normal holidays.");
+                                    }
+                                }
+                            });
+                        }    
+                    });
+                    // Request for remaining normal holidays
+                    $.ajax({
+                        url: '/remaining-normal-holidays/' + selectedEmployeeId + '/',
+                        type: 'GET',
+                        dataType: 'json',
+                        success: function(response) {
+                            // Update "Total Normal Holidays Left"
+                            $("#totalNormalHolidaysleft").text(response.remaining_days || 0);
+                        },
+                        error: function(jqXHR) {
+                            // Only show an alert for errors other than 403
+                            if(jqXHR.status != 403) {
+                                alert("An error occurred while fetching the remaining normal holidays.");
+                            }
+                        }
+                    });
+                    // Fetch data for the special holiday usage table
+                    $.ajax({
+                        url: '/special-holiday-usage/',
+                        data: {
+                            'employee_id': selectedEmployeeId,
+                            'year': selectedYear,
+                        },
+                        type: 'GET',
+                        dataType: 'json',
+                        success: function(response) {
+                            // Clear the DataTable
+                            specialHolidayUsageTable.clear();
+                            // Populate DataTable
+                            response.data.forEach(function(item) {
+                                specialHolidayUsageTable.row.add(item);
+                            });
+                            specialHolidayUsageTable.draw();
+                        },
+                        error: function() {
+                            alert("An error occurred while processing your request.");
+                        }
+                    });
+                });
+
+                $(document).on('click', '.delete-btn', function() {
+                    var holidayId = $(this).data('holiday-id');
+                    $('#confirmModal').modal('show');
+                
+                    // When the user confirms deletion
+                    $('#confirmDelete').off('click').on('click', function() {
+                        $.ajax({
+                            url: '/delete-holiday/' + holidayId + '/',
+                            type: 'POST',
+                            dataType: 'json',
+                            headers: {
+                                'X-CSRFToken': document.cookie.split('; ').find(row => row.startsWith('csrftoken')).split('=')[1]
+                            },
+                            success: function(response) {
+                                if (response.status == 'ok') {
+                                    // Refresh the data
+                                    $("#filterButton").trigger("click");
+                                    $('#confirmModal').modal('hide');
+                                } else {
+                                    alert('Failed to delete the holiday: ' + response.message);
+                                }
+                            },
+                            error: function(jqXHR, textStatus, errorThrown) {
+                                alert("An error occurred while deleting the holiday: " + errorThrown);
+                            }
+                        });
+                    });
+                });
+                
+            });
+
+            $("#exportButton").click(function() {
+                var selectedExportYear = $("#exportYearSelect").val();
+                window.location.href = '/export-holidays/?year=' + selectedExportYear;
+            });
+        </script>
+        <script src="{% static 'LeaveTracker/scripts.js' %}"></script>
+    </body>
+</html>

@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    {% load static %}
+    <!-- JavaScript libraries -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.3/dist/umd/popper.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Holidays</title>
+    <!-- CSS libraries -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="icon" href="{% static 'favicon.ico' %}" type="image/x-icon">
+    {% load static %}
+    {% load math_filters %}
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="{% static 'LeaveTracker/styles.css' %}">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+</head>
+<body>
+
+    <!-- Navbar -->
+    {% include 'LeaveTracker/navbar.html' %}
+    <div class="row flex-container" style="height: 100vh;" id="main-container">
+
+         <!-- Sidebar -->
+         <div class="sidebar col-md-3.5">
+            <!-- User information -->
+            <div class="user-info">
+                <i class="fas fa-user user-img" style="font-size: 64px;"></i>
+                <span class="user-name">{{ request.user.get_full_name }}</span>
+                <span class="user-position">{{ user.employee.position }}</span>
+            </div>
+            <!-- Holiday information -->
+            <div class="holiday-info">
+              <h3 class="text-white">Leave Balance</h3>
+              <p class="text-white">Remaining Days: {{ request.user.employee.available_holidays }}</p>
+              <p class="text-white">Taken: {{ holidays_taken }}</p>
+            </div>            
+        </div>
+    <div class="holidays-container col-md-8">
+        <h2 class="my-3">My Holidays</h2>
+        <!-- Year dropdown -->
+        <div class="col-auto" style="margin: 20px 0;">
+            <label for="yearSelect" class="form-label">Select Year:</label>
+            <select class="form-select" id="yearSelect">
+                {% if years %}
+                    {% for year in years %}
+                        <option value="{{ year }}"
+                        {% if year == selected_year %}
+                            selected="selected"
+                        {% endif %}>
+                        {{ year }}
+                        </option>
+                    {% endfor %}
+                {% else %}
+                    <option disabled>No Years Available</option>
+                {% endif %}
+            </select>
+            <button id="filterButton" class="btn btn-primary" {% if not years %}disabled{% endif %}>Filter</button>
+        </div>
+        <ul class="nav nav-tabs modern-tabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <a class="nav-link active" data-toggle="tab" href="#upcoming" role="tab" aria-selected="true">Upcoming</a>
+        </li>
+        <li class="nav-item" role="presentation">
+            <a class="nav-link" data-toggle="tab" href="#past" role="tab" aria-selected="false">Past</a>
+        </li>
+        <li class="nav-item" role="presentation">
+            <a class="nav-link" data-toggle="tab" href="#pending" role="tab" aria-selected="false">Pending</a>
+        </li>
+        <li class="nav-item" role="presentation">
+            <a class="nav-link" data-toggle="tab" href="#rejected" role="tab" aria-selected="false">Rejected</a>
+        </li>
+        </ul>
+
+
+        <!-- Tab panels -->
+        <div class="tab-content">
+            <div class="tab-pane container active" id="upcoming">
+                <!-- Upcoming Approved Holidays go here -->
+                <div class="upcoming-holidays mb-4">
+                    <h4 class="mb-3"></h4>
+                    <div class="list-group">
+                        {% for holiday_request in upcoming_approved_holidays %}
+                            <div class="list-group-item">
+                                <span>{{ holiday_request.start_date }} - {{ holiday_request.end_date }}</span>
+                                <span class="badge bg-success float-end">Approved</span>
+                            </div>
+                        {% empty %}
+                            <div class="list-group-item">
+                                <span>No Upcoming Holidays</span>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% include 'LeaveTracker/pagination.html' with page=upcoming_approved_holidays %}
+            </div>
+
+            <div class="tab-pane container fade" id="past">
+                <!-- Past Holidays go here -->
+                <div class="past-holidays mb-4">
+                    <h4 class="mb-3"></h4>
+                    <div class="list-group">
+                        {% for holiday_request in past_holidays %}
+                            <div class="list-group-item">
+                                <span>{{ holiday_request.start_date }} - {{ holiday_request.end_date }}</span>
+                                <span class="badge bg-success float-end">Approved</span>
+                            </div>
+                        {% empty %}
+                            <div class="list-group-item">
+                                <span>No Past Holidays</span>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% include 'LeaveTracker/pagination.html' with page=past_holidays %}
+            </div>
+
+            <div class="tab-pane container fade" id="pending">
+                <!-- Pending Requests go here -->
+                <div class="pending-approval mb-4">
+                    <h4 class="mb-3"></h4>
+                    <div class="list-group" style="min-height: 100px;">
+                        {% for holiday_request in pending_holidays %}
+                            <div class="list-group-item">
+                                <span>{{ holiday_request.start_date }} - {{ holiday_request.end_date }}</span>
+                                <span class="badge bg-warning text-dark float-end">Pending</span>
+                            </div>
+                        {% empty %}
+                            <div class="list-group-item">
+                                <span>No Pending Holidays</span>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% include 'LeaveTracker/pagination.html' with page=pending_holidays %}
+            </div>
+
+            <div class="tab-pane container fade" id="rejected">
+                <!-- Rejected Requests go here -->
+                <div class="rejected-holidays">
+                    <h4 class="mb-3"></h4>
+                    <div class="list-group">
+                        {% for holiday_request in rejected_holidays %}
+                            <div class="list-group-item">
+                                <span>{{ holiday_request.start_date }} - {{ holiday_request.end_date }}</span>
+                                <span class="badge bg-danger float-end">Rejected</span>
+                            </div>
+                        {% empty %}
+                            <div class="list-group-item">
+                                <span>No Rejected Holidays</span>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% include 'LeaveTracker/pagination.html' with page=rejected_holidays %}
+            </div>
+
+        </div>
+    </div>
+    <script src="{% static 'LeaveTracker/scripts.js' %}"></script>
+    <script>
+        document.getElementById('filterButton').addEventListener('click', (event) => {
+            event.preventDefault();  // Prevent the default form submission
+            const selectedYear = document.getElementById('yearSelect').value;
+            // Reload the page with the selected year as a query parameter
+            window.location.href = '?year=' + selectedYear;
+        });
+        </script>
+</body>
+</html>

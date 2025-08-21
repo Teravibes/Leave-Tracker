@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+  {% load static %}
+<head>
+
+    <!-- Loading external scripts -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.3/dist/umd/popper.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+
+    <!-- Meta tags and title -->
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Home</title>
+
+    <!-- Loading external stylesheets -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="icon" href="{% static 'LeaveTracker.ico' %}" type="image/x-icon">
+
+    <!-- Loading static files and math filters -->
+    {% load static %}
+    {% load math_filters %}
+    <link rel="stylesheet" href="{% static 'LeaveTracker/styles.css' %}">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+
+</head>
+<body>
+    <!-- Loading static files and CSRF token -->
+    {% csrf_token %}
+    
+    <!-- Notification container -->
+    <div id="notificationContainer"></div>
+    <!-- Including the navbar -->
+    {% include 'LeaveTracker/navbar.html' %}
+
+    <!-- Main container with flex layout -->
+    <div class="row flex-container" style="height: 100vh;" id="main-container">
+          <!-- Sidebar -->
+         <div class="sidebar col-md-3.5">
+          <!-- User information -->
+          <div class="user-info">
+              <i class="fas fa-user user-img" style="font-size: 64px;"></i>
+              <span class="user-name">{{ request.user.get_full_name }}</span>
+              <span class="user-position">{{ user.employee.position }}</span>
+          </div>
+          <!-- Holiday information -->
+          <div class="holiday-info">
+              <h3 class="text-white">Leave Balance</h3>
+              <p class="text-white">Remaining Days: {{ request.user.employee.available_holidays }}</p>
+              <p class="text-white">Taken: {{ holidays_taken }}</p>
+          </div>            
+      </div>
+
+        <!-- Calendar -->
+        <div class="calendar-container">
+          <!-- Calendar container -->
+          <div class="container mt-5">
+              <!-- Calendar header with navigation buttons -->
+              <div class="calendar-header d-flex justify-content-between align-items-center mb-3">
+                  <button id="prevMonth" class="btn btn-primary">&lt;</button>
+                  <h2 id="monthYear" class="mb-0"></h2>
+                  <button id="nextMonth" class="btn btn-primary">&gt;</button>
+              </div>
+              <!-- Calendar table -->
+              <table class="calendar table">
+                  <thead>
+                      <tr>
+                          <th>Sun</th>
+                          <th>Mon</th>
+                          <th>Tue</th>
+                          <th>Wed</th>
+                          <th>Thu</th>
+                          <th>Fri</th>
+                          <th>Sat</th>
+                      </tr>
+                  </thead>
+                  <tbody id="calendarBody"></tbody>
+                </table>
+                <!-- Button and date counter container -->
+                <div class="d-flex justify-content-between align-items-center mt-3">
+                    <!-- Buttons and special holiday container -->
+                    <div class="button-special-container d-flex flex-wrap align-items-center">
+                        <!-- Buttons container -->
+                        <div class="button-container mb-2 d-flex flex-column flex-md-row">
+                            <button type="button" class="btn btn-primary mb-2 mb-md-0 mr-md-2" id="submitHolidayRequest">Submit</button>
+                            <button id="clearSelection" class="btn btn-clear">Clear Selection</button>
+                        </div>
+                
+                        <!-- Special Holiday Container -->
+                        <div class="special-holiday-container d-flex flex-column flex-md-row align-items-center gap-3 p-3">
+                          
+                          <!-- Toggle -->
+                          <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="is_special">
+                            <label class="form-check-label" for="is_special">Special Holiday?</label>
+                          </div>
+
+                          <!-- Dropdown, hidden by default -->
+                          <div class="form-group mb-0" id="special_type_container" style="display: none;">
+                            <label for="special_type" class="me-2 fw-medium">Type:</label>
+                            <select class="form-select" id="special_type" name="special_type_id">
+                              {% for holiday_type in special_holiday_types %}
+                                <option value="{{ holiday_type.id }}">{{ holiday_type.name }}</option>
+                              {% endfor %}
+                            </select>
+                          </div>
+
+                        </div>
+
+                        </div>
+                    </div>
+                    <!-- Date Counter -->
+                    <span id="dateCounter" class="font-weight-bold"></span>
+                </div>                
+              </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Loading Spinner Overlay -->
+      <div id="loadingOverlay" style="display: none;">
+        <div class="spinner"></div>
+        <div class="loading-text">Submitting your request...</div>
+      </div>
+
+      <!-- Error message modal for invalid date selections -->
+      <div class="modal fade" id="errorModal" tabindex="-1" role="dialog" aria-labelledby="errorModalLabel" aria-hidden="true">
+        <div class="modal-dialog" role="document">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title" id="errorModalLabel">Error</h5>
+              <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                <span aria-hidden="true">&times;</span>
+              </button>
+            </div>
+            <div class="modal-body">
+              You have not selected any valid days to take off. Please select weekdays that are not holidays.
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Error message modal for exceeding special holiday limit -->
+      <div class="modal fade" id="exceededSpecialHolidayModal" tabindex="-1" role="dialog" aria-labelledby="exceededSpecialHolidayModalLabel" aria-hidden="true">
+        <div class="modal-dialog" role="document">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title" id="exceededSpecialHolidayModalLabel">Error</h5>
+              <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                <span aria-hidden="true">&times;</span>
+              </button>
+            </div>
+            <div class="modal-body">
+              You have exceeded the maximum limit for this type of special holiday. Please reduce the number of days requested.
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+        <!-- Error message modal for no available holidays -->
+      <div class="modal fade" id="noHolidaysModal" tabindex="-1" role="dialog" aria-labelledby="noHolidaysModalLabel" aria-hidden="true">
+        <div class="modal-dialog" role="document">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title" id="noHolidaysModalLabel">Error</h5>
+              <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                <span aria-hidden="true">&times;</span>
+              </button>
+            </div>
+            <div class="modal-body">
+              You have no available holidays left. Please contact your manager if you have any questions.
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+        <!-- Past Dates Error Modal -->
+      <div class="modal fade" id="pastDatesErrorModal" tabindex="-1" role="dialog" aria-labelledby="pastDatesErrorModalLabel" aria-hidden="true">
+        <div class="modal-dialog" role="document">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title" id="pastDatesErrorModalLabel">Error</h5>
+              <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                <span aria-hidden="true">&times;</span>
+              </button>
+            </div>
+            <div class="modal-body">
+              You have already submited these holidays before.
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+          <!-- Confirmation modal for selected dates -->
+      <div class="modal fade" id="confirmationModal" tabindex="-1" role="dialog" aria-labelledby="confirmationModalLabel" aria-hidden="true">
+        <div class="modal-dialog" role="document">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title" id="confirmationModalLabel">Confirm Your Request</h5>
+              <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                <span aria-hidden="true">&times;</span>
+              </button>
+            </div>
+            <div class="modal-body">
+              <!-- Displaying the selected date range and total holidays -->
+              Are you sure you want to submit these days?<br>
+              <span id="selectedDateRange"></span><br>
+              Total holidays: <span id="totalHolidays"></span>
+            </div>
+            <div class="modal-footer">
+              <!-- Confirmation buttons -->
+              <button type="button" class="btn btn-secondary" data-dismiss="modal">No</button>
+              <button type="button" class="btn btn-primary" id="confirmRequest">Yes</button>
+            </div>
+          </div>
+        </div>
+    </div>
+
+    <!-- Including the scripts -->
+    <script src="{% static 'LeaveTracker/scripts.js' %}"></script>
+    <script>
+      document.addEventListener("DOMContentLoaded", function() {
+        var isSpecialCheckbox = document.getElementById("is_special");
+        var specialTypeContainer = document.getElementById("special_type_container");
+    
+        isSpecialCheckbox.addEventListener("change", function() {
+          if (this.checked) {
+            specialTypeContainer.style.display = "block";
+          } else {
+            specialTypeContainer.style.display = "none";
+          }
+        });
+      });
+    </script>
+
+    <!-- Displaying messages if there are any -->
+    {% if messages %}
+    <div class="messages">
+        {% for message in messages %}
+        <div{% if message.tags %} class="{{ message.tags }}"{% endif %}>{{ message }}</div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+</body>
+</html>

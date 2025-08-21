@@ -1,0 +1,27 @@
+{% load static %}
+{% load holiday_filters %}
+<link rel="stylesheet" href="{% static 'LeaveTracker/styles.css' %}">
+<!-- Navbar -->
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+    <!-- Navbar brand (logo and/or company name) -->
+    <a class="navbar-brand" href="{% url 'home' %}">LeaveTracker</a>
+    <!-- Navbar toggler button for mobile devices -->
+    <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarContent" aria-controls="navbarContent" aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+    </button>
+    <!-- Navbar content (links, buttons, etc.) -->
+    <div class="collapse navbar-collapse" id="navbarContent">
+        <ul class="navbar-nav mr-auto">
+        </ul>
+        <ul class="navbar-nav">
+                </div>
+            </li>
+        </ul>
+    </div>
+</nav>
+
+<style>
+    button#toggleTheme {
+        padding-top: 8px;
+      }
+</style>

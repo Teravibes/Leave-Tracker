@@ -1,0 +1,63 @@
+{% load static %}
+{% load holiday_filters %}
+<link rel="stylesheet" href="{% static 'LeaveTracker/styles.css' %}">
+<!-- Navbar -->
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+    <!-- Navbar brand (logo and/or company name) -->
+    <a class="navbar-brand" href="{% url 'home' %}">
+        <img src="{% static 'images/logo.svg' %}" alt="LeaveTracker Logo" style="height: 55px; width: auto; padding-left:21px;">
+    </a>
+    <!-- Navbar toggler button for mobile devices -->
+    <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarContent" aria-controls="navbarContent" aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+    </button>
+    <!-- Navbar content (links, buttons, etc.) -->
+    <div class="collapse navbar-collapse" id="navbarContent">
+        <ul class="navbar-nav mr-auto">
+        </ul>
+        <ul class="navbar-nav">
+            <!-- Theme toggle button -->
+            <li class="nav-item">
+                <button id="toggleTheme" class="btn btn-sm btn-outline-secondary">
+                    <i id="themeIcon" class="fas fa-moon"></i>
+                </button>
+            </li>
+             <!-- bell notification for managers -->
+             {% if is_manager and request.user|has_perm:'LeaveTracker.review_holiday_requests_managed' or request.user|has_perm:'LeaveTracker.review_holiday_requests_all' %}
+            <li class="nav-item">
+                <a class="nav-link" href="{% url 'review_requests' %}">
+                    <i class="fas fa-bell"></i>
+                    <span class="badge badge-pill badge-light">{{ pending_requests_count }}</span>
+                </a>
+            </li>
+            {% endif %}
+
+            <!-- User account dropdown menu -->
+            <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                {{ request.user.username }}
+            </a>
+            <div class="dropdown-menu" aria-labelledby="navbarDropdown">
+                <a class="dropdown-item" href="{% url 'home' %}">Home</a>
+                {% comment %} <a class="dropdown-item" href="#">Edit Account</a> {% endcomment %}
+                <a class="dropdown-item" href="{% url 'my_holidays' %}">My Holidays</a>
+                {% if is_manager and request.user|has_perm:'LeaveTracker.review_holiday_requests_managed' or request.user|has_perm:'LeaveTracker.review_holiday_requests_all' %}
+                    <a class="dropdown-item" href="{% url 'review_requests' %}">Review Requests</a>
+                {% endif %}
+                {% if request.user|has_perm:'LeaveTracker.view_all_employees' or request.user|has_perm:'LeaveTracker.view_managed_employees' or request.user|has_perm:'LeaveTracker.view_holiday' %}
+                    <a class="dropdown-item" href="{% url 'manage_holidays' %}">Employee Holidays</a>
+                {% endif %}
+                    <!-- Dropdown divider -->
+                    <div class="dropdown-divider"></div>
+                    <a class="dropdown-item" href="{% url 'logout' %}">Logout</a>
+                </div>
+            </li>
+        </ul>
+    </div>
+</nav>
+
+<style>
+    button#toggleTheme {
+        padding-top: 8px;
+      }
+</style>

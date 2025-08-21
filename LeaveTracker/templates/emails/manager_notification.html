@@ -1,0 +1,7 @@
+{% extends "emails/base.html" %}
+
+{% block content %}
+  <h2>New Holiday Request</h2>
+  <p>{{ employee_fullname }} has submitted a holiday request.</p>
+  <a href="{{ view_request_url }}" class="btn">Review Request</a>
+{% endblock %}
